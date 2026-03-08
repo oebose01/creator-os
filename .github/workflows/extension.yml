@@ -1,0 +1,71 @@
+name: Build and Publish Extension
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/extension/**'
+      - '.github/workflows/extension.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/extension/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/extension/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend/extension
+          npm ci
+
+      - name: Run unit tests
+        run: |
+          cd frontend
+          npm test extension/__tests__/ -- --run
+
+      - name: Package extension
+        run: |
+          cd frontend/extension
+          mkdir -p dist
+          cp manifest.json popup.html popup.js crypto-helper.js verify.js dist/
+          cd dist
+          zip -r ../creator-os-extension.zip *
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: frontend/extension/creator-os-extension.zip
+
+      # Optional: Publish to Chrome Web Store (requires secrets)
+      # - name: Publish to Chrome Web Store
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      #   uses: mnao305/chrome-extension-upload@v4
+      #   with:
+      #     extension-id: 'your-extension-id'
+      #     client-id: ${{ secrets.CWS_CLIENT_ID }}
+      #     client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+      #     refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+      #     file-path: frontend/extension/creator-os-extension.zip
+
+      # Optional: Publish to Firefox Add-ons
+      # - name: Publish to Firefox Add-ons
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      #   uses: browser-actions/firefox-upload@v1
+      #   with:
+      #     api-key: ${{ secrets.FIREFOX_API_KEY }}
+      #     api-secret: ${{ secrets.FIREFOX_API_SECRET }}
+      #     file: frontend/extension/creator-os-extension.zip
