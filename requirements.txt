@@ -106,7 +106,7 @@ urllib3==2.6.3
 uuid_utils==0.14.1
 uvicorn==0.41.0
 virtualenv==21.1.0
-web3==7.14.1
+web3==6.20.3
 websockets==15.0.1
 xxhash==3.6.0
 yarl==1.23.0
