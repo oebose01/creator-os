@@ -46,23 +46,27 @@ class CreateCheckoutSessionRequest(BaseModel):
 @app.post("/api/register-content")
 async def register_content(req: ContentRegisterRequest):
     try:
-        # Register on blockchain
-        chain_result = register_content_on_chain(req.content_hash)
-        # Optionally store in Supabase as cache
-        supabase.table("content_registry").insert(
-            {
-                "content_hash": req.content_hash,
-                "user_id": req.user_id,
-                "tx_hash": chain_result["tx_hash"],
-                "block_number": chain_result["block_number"],
-                "created_at": "now()",
-            }
-        ).execute()
-        return {
-            "success": True,
-            "tx_hash": chain_result["tx_hash"],
-            "block_number": chain_result["block_number"],
-        }
+        # Try blockchain registration if available
+        chain_result = None
+        if "register_content_on_chain" in globals():
+            chain_result = register_content_on_chain(req.content_hash)
+        # Always store in Supabase as backup
+        data = (
+            supabase.table("content_registry")
+            .insert(
+                {
+                    "content_hash": req.content_hash,
+                    "user_id": req.user_id,
+                    "tx_hash": chain_result.get("tx_hash") if chain_result else None,
+                    "block_number": chain_result.get("block_number")
+                    if chain_result
+                    else None,
+                    "created_at": "now()",
+                }
+            )
+            .execute()
+        )
+        return {"success": True, "data": data.data, "blockchain": bool(chain_result)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -70,24 +74,27 @@ async def register_content(req: ContentRegisterRequest):
 @app.post("/api/verify-content")
 async def verify_content(req: ContentVerifyRequest):
     try:
-        chain_result = verify_content_on_chain(req.content_hash)
-        if chain_result["exists"]:
+        # First try blockchain
+        chain_result = None
+        if "verify_content_on_chain" in globals():
+            chain_result = verify_content_on_chain(req.content_hash)
+        if chain_result and chain_result.get("exists"):
             return {
                 "success": True,
                 "owner": chain_result["owner"],
                 "timestamp": chain_result["timestamp"],
+                "source": "blockchain",
             }
-        else:
-            # Fallback to Supabase cache
-            result = (
-                supabase.table("content_registry")
-                .select("*")
-                .eq("content_hash", req.content_hash)
-                .execute()
-            )
-            if result.data:
-                return {"success": True, "data": result.data[0]}
-            return {"success": False, "message": "Content not found"}
+        # Fallback to Supabase
+        result = (
+            supabase.table("content_registry")
+            .select("*")
+            .eq("content_hash", req.content_hash)
+            .execute()
+        )
+        if result.data:
+            return {"success": True, "data": result.data[0], "source": "database"}
+        return {"success": False, "message": "Content not found"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -96,7 +103,12 @@ async def verify_content(req: ContentVerifyRequest):
 async def create_checkout_session(req: CreateCheckoutSessionRequest):
     try:
         checkout_session = stripe.checkout.Session.create(
-            line_items=[{"price": req.price_id, "quantity": 1}],
+            line_items=[
+                {
+                    "price": req.price_id,
+                    "quantity": 1,
+                },
+            ],
             mode="subscription",
             success_url=req.success_url,
             cancel_url=req.cancel_url,
@@ -120,9 +132,11 @@ async def stripe_webhook(request: Request):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
+    # Handle the event
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         user_id = session["metadata"]["user_id"]
+        # Update user's subscription status in Supabase
         supabase.table("users").update({"subscription_status": "active"}).eq(
             "id", user_id
         ).execute()
