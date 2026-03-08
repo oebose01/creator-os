@@ -6,8 +6,16 @@ import stripe
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from app.contract import register_content_on_chain, verify_content_on_chain
+import sentry_sdk
 
 load_dotenv()
+
+# Initialize Sentry
+sentry_sdk.init(
+    dsn="https://a22e274863735aa929a7c6f1da2c80e3@o4511010150809600.ingest.us.sentry.io/4511010156511232",
+    send_default_pii=True,
+    traces_sample_rate=1.0,
+)
 
 app = FastAPI()
 
@@ -144,6 +152,11 @@ async def stripe_webhook(request: Request):
     return {"received": True}
 
 
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
+@app.get("/api/sentry-debug")
+async def sentry_debug():
+    1 / 0  # This raises ZeroDivisionError without returning anything
+
+# Optional debug route for testing Sentry – remove after confirming
+@app.get("/api/sentry-debug")
+async def sentry_debug():
+    division_by_zero = 1 / 0
