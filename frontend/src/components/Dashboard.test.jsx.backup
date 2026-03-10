@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { render, screen, within, fireEvent } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import Dashboard from './Dashboard';
 
@@ -45,6 +45,7 @@ describe('Dashboard', () => {
   it('should display content suggestions', () => {
     render(<Dashboard />);
     expect(screen.getByText(/suggestions/i)).toBeInTheDocument();
+    // Initially we expect a loading or static message
     const hasLoading = screen.queryByText(/loading/i);
     const hasTip = screen.queryByText(/tip:/i);
     expect(hasLoading || hasTip).toBeTruthy();
@@ -57,6 +58,6 @@ describe('Dashboard', () => {
     fireEvent.click(settingsButton);
     expect(screen.getByText(/widget visibility/i)).toBeInTheDocument();
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes.length).toBe(5);
+    expect(checkboxes.length).toBe(5); // One per widget
   });
-});
+}

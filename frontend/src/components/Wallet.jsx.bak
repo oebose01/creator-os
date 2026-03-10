@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ï»¿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
@@ -18,7 +18,7 @@ export default function Wallet() {
     const fetchBalance = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/balance/${user.id}`);
+        const res = await fetch(${API_BASE}/api/balance/);
         if (!res.ok) throw new Error('Failed to fetch balance');
         const data = await res.json();
         setBalance(data.balance);
@@ -86,7 +86,7 @@ export default function Wallet() {
       {error && <p className="text-red-500">{error}</p>}
       <div className="mb-4">
         <span className="text-lg">Balance: </span>
-        <span className="text-2xl font-bold">{balance ?? '—'} HuhlyCoin</span>
+        <span className="text-2xl font-bold">{balance ?? 'â€”'} HuhlyCoin</span>
       </div>
 
       <div className="mb-4">
@@ -124,7 +124,7 @@ export default function Wallet() {
           <ul className="space-y-1">
             {transactions.map(tx => (
               <li key={tx.id} className="text-sm">
-                {tx.date.slice(0,10)} – {tx.description}: {tx.amount} HuhlyCoin
+                {tx.date.slice(0,10)} â€“ {tx.description}: {tx.amount} HuhlyCoin
               </li>
             ))}
           </ul>

@@ -3,7 +3,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Suggestions component (unchanged)
+// Suggestions component with AI integration
 function SuggestionsWidget() {
   const [suggestion, setSuggestion] = useState('Loading...');
   const [loading, setLoading] = useState(true);
@@ -11,6 +11,7 @@ function SuggestionsWidget() {
   useEffect(() => {
     const fetchSuggestion = async () => {
       try {
+        // Call local Ollama API
         const response = await fetch('http://localhost:11434/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -23,6 +24,7 @@ function SuggestionsWidget() {
         const data = await response.json();
         setSuggestion(data.response);
       } catch (error) {
+        console.error('Ollama error, using fallback:', error);
         setSuggestion('Tip: Try brainstorming with a mind map.');
       } finally {
         setLoading(false);
@@ -39,8 +41,8 @@ function SuggestionsWidget() {
   );
 }
 
-function SortableItem({ id, children, isVisible }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !isVisible });
+function SortableItem({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -49,7 +51,6 @@ function SortableItem({ id, children, isVisible }) {
     margin: '8px 0',
     padding: '8px',
     backgroundColor: 'white',
-    display: isVisible ? 'block' : 'none',
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -60,17 +61,13 @@ function SortableItem({ id, children, isVisible }) {
 }
 
 function Dashboard() {
-  const allWidgets = [
-    { id: 'revenue', name: 'Revenue', content: <><h2>Revenue</h2><p>$0</p></> },
-    { id: 'pending', name: 'Pending Tasks', content: <><h2>Pending Tasks</h2><ul><li>Register your first content</li><li>Verify your email</li><li>Connect your wallet</li></ul></> },
-    { id: 'performance', name: 'Content Performance', content: <><h2>Content Performance</h2><p>Views: 0</p><p>Likes: 0</p><p>Earnings: $0</p></> },
-    { id: 'ai', name: 'AI Activity Log', content: <><h2>AI Activity Log</h2><p>Generated a social post</p><p>Suggested a title for your video</p></> },
-    { id: 'suggestions', name: 'AI Suggestions', content: <SuggestionsWidget /> },
-  ];
-
-  const [items, setItems] = useState(allWidgets);
-  const [visibility, setVisibility] = useState(Object.fromEntries(allWidgets.map(w => [w.id, true])));
-  const [showSettings, setShowSettings] = useState(false);
+  const [items, setItems] = React.useState([
+    { id: 'revenue', content: <><h2>Revenue</h2><p>$0</p></> },
+    { id: 'pending', content: <><h2>Pending Tasks</h2><ul><li>Register your first content</li><li>Verify your email</li><li>Connect your wallet</li></ul></> },
+    { id: 'performance', content: <><h2>Content Performance</h2><p>Views: 0</p><p>Likes: 0</p><p>Earnings: $0</p></> },
+    { id: 'ai', content: <><h2>AI Activity Log</h2><p>Generated a social post</p><p>Suggested a title for your video</p></> },
+    { id: 'suggestions', content: <SuggestionsWidget /> },
+  ]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -91,39 +88,13 @@ function Dashboard() {
     }
   };
 
-  const toggleWidget = (id) => {
-    setVisibility(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Welcome to your dashboard</h1>
-        <button onClick={() => setShowSettings(!showSettings)} aria-label="settings">
-          ⚙️ Settings
-        </button>
-      </div>
-
-      {showSettings && (
-        <div style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
-          <h2>Widget Visibility</h2>
-          {allWidgets.map(widget => (
-            <label key={widget.id} style={{ display: 'block', margin: '5px 0' }}>
-              <input
-                type="checkbox"
-                checked={visibility[widget.id]}
-                onChange={() => toggleWidget(widget.id)}
-              />
-              {widget.name}
-            </label>
-          ))}
-        </div>
-      )}
-
+      <h1>Welcome to your dashboard</h1>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
-            <SortableItem key={item.id} id={item.id} isVisible={visibility[item.id]}>
+            <SortableItem key={item.id} id={item.id}>
               {item.content}
             </SortableItem>
           ))}
