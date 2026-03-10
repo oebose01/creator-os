@@ -4,10 +4,9 @@
     "version":  "0.1.0",
     "identifier":  "com.rober.desktop",
     "build":  {
-                  "beforeDevCommand":  "",
-                  "devUrl":  "http://localhost:1420",
-                  "beforeBuildCommand":  "npm run build",
-                  "frontendDist":  "../dist"
+                  "frontendDist":  "../frontend/dist",
+                  "devUrl":  "http://localhost:5174",
+                  "beforeDevCommand":  ""
               },
     "app":  {
                 "windows":  [
